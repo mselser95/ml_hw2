@@ -30,6 +30,7 @@ def sigmoid(x):
     return 1 / (1 + np.exp(-x))
 
 def prob(theta, x):
+    a = np.dot(x, theta)
     return sigmoid(np.dot(x, theta))
 
 def objective(theta, x, y): # Equation in slide 39
@@ -54,34 +55,20 @@ def fit(x, y, theta):
 
 def fit_backtrack(x, y, theta, alpha, beta):
 
-    t_star = theta
-    t = 1
+    t = 0.001
     i = 1
 
-    #print(f"Gradient shape: {gradient(t_star, x, y).shape}")
-    #print(f"np.dot(x, theta) shape: {(np.dot(x, theta)).shape}")
-    #print(f"y shape: {y.shape}")
-    #print(f"(sigmoid(np.dot(x, theta)) shape: {(sigmoid(np.dot(x, theta))).shape}")
-    #print(f"sigmoid(np.dot(x, theta)) - y shape: {(sigmoid(np.dot(x, theta)) - y.reshape(-1,1)).shape}")
-    #print(f"x.T shape: {(x.T.shape)}")
-    #print(f"grad shape: {(np.dot(x.T, (sigmoid(np.dot(x, theta)) - y.reshape(-1,1)))).shape}")
-    #print(t_star.shape)
-    #print((t_star + t * gradient(t_star, x, y)).shape)
-    #print(f"t * gradient_one_point(t_star, x, y): {t * gradient_one_point(t_star, x, y)}")
-    #print(f"t_star: {t_star}")
-    #print(f"t_star + t * gradient_one_point(t_star, x, y): {t_star + t * gradient_one_point(t_star, x, y)}") 
+    a, b = math.nan, math.nan
+    while  (math.isnan(a) or math.isnan(b) or a - b >= 0) and i < 100:
+        g = gradient(theta, x, y) 
+        a = objective(theta - t * g, x, y)
+        b = objective(theta , x, y) + alpha * t * np.linalg.norm(g)**2
 
-    a = objective(t_star + t * gradient_one_point(t_star, x, y) / np.linalg.norm(gradient_one_point(t_star, x, y)), x, y)
-    b = objective(t_star , x, y) + alpha * t * np.linalg.norm(gradient_one_point(t_star , x, y))**2
-    while  a - b > 0 and i < 2000:
-        t *= beta
-        a = objective(t_star + t * gradient_one_point(t_star, x, y) / np.linalg.norm(gradient_one_point(t_star, x, y)), x, y)
-        b = objective(t_star , x, y) - alpha * t * np.linalg.norm(gradient_one_point(t_star , x, y))**2
+        print(f"Iteration {i}: t = {t}, a = {a}, b = {b}, theta = {(theta - t * g).T}  Error: {a - b}")
         i += 1
+        t *= beta
 
-        print(f"Iteration {i}: t = {t}, a = {a}, b = {b}, theta = {np.squeeze(t_star + t * gradient_one_point(t_star, x, y) / np.linalg.norm(gradient_one_point(t_star, x, y))**2).T}  Error: {a - b}")
-
-    return np.squeeze(t_star + t * gradient_one_point(t_star, x, y) / np.linalg.norm(gradient_one_point(t_star, x, y)))
+    return np.squeeze((theta - t * g).T)
 
 
 def accuracy(x, actual_classes, theta_star):
@@ -105,11 +92,11 @@ if __name__ == "__main__":
 
     X = data.iloc[:, :-1]
     X = np.c_[np.ones((X.shape[0], 1)), X] ## augment with column of ones
-    print(f"X Shape: {X.shape}") # (99,3)
+    #print(f"X Shape: {X.shape}") # (99,3)
     
     # y = target values, last column of the data frame
     y = data.iloc[:, -1].to_numpy()
-    print(f"y Shape: {y.shape}") # (99,)
+    #print(f"y Shape: {y.shape}") # (99,)
 
     admitted = data.loc[y == 1]
     not_admitted = data.loc[y == 0]
@@ -119,15 +106,14 @@ if __name__ == "__main__":
     #plt.legend()
     #plt.show()
 
-    #theta_star = fit(X, y, np.zeros((X.shape[1], 1)))
-    #print(f"theta_star: {theta_star}")
-    #print(theta_star) # (3,)
-    
+    theta_star = fit(X, y, np.zeros((X.shape[1], 1)))
+    print(f"theta_star: {theta_star}")
+        
     #theta_star = np.array([-20, 0.1, 0.1]) # This set of thetas does not work! just for debugging
-    theta_star_backtrack = fit_backtrack(X, y, np.zeros((X.shape[1], 1)), 0.4, 0.99)
+    theta_star_backtrack = fit_backtrack(X, y, np.array([0,0,0]), 0.5, 0.8)
     print(f"theta_star_backtrack: {theta_star_backtrack}")
 
 
-    print(accuracy(X, y, theta_star_backtrack))
+    print(f"accuracy: {accuracy(X, y, theta_star_backtrack):.2f}%")
     
     plot_decision_boundary(X, theta_star_backtrack)
