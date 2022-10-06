@@ -36,6 +36,8 @@ def prob(theta, x):
 def objective(theta, x, y): # Equation in slide 39
     # We calculate the objective function value for all the training set.
     p = prob(theta, x)
+    p = np.maximum(p, 0.9999)
+    p = np.minimum(p, 0.0001)
     a = np.log(p)
     b = np.log(1-p)
     return - np.sum( y * a + (1 - y) * b)
@@ -43,32 +45,39 @@ def objective(theta, x, y): # Equation in slide 39
 def gradient(theta, x, y): # From equation (4.8) of slides. xT (mu(w) - y)
     return np.dot(x.T, sigmoid(np.dot(x, theta)) - y)
 
-def gradient_one_point(theta, x, y): # From equation (4.8) of slides. xT (mu(w) - y)
-    a = x.T
-    b =  sigmoid(np.dot(x, theta))
-    c = y.reshape(-1,1)
-    return np.dot(a,b - c)
-
 def fit(x, y, theta):
     return fmin_tnc(func=objective, x0=theta, fprime=gradient, args=(x, y))[0]
 
 
-def fit_backtrack(x, y, theta, alpha, beta):
+def backtracking_line_search(x, y, theta, alpha, beta, max_iters=200):
 
-    t = 0.001
+    t = 1
     i = 1
 
-    a, b = math.nan, math.nan
-    while  (math.isnan(a) or math.isnan(b) or a - b >= 0) and i < 100:
-        g = gradient(theta, x, y) 
-        a = objective(theta - t * g, x, y)
-        b = objective(theta , x, y) + alpha * t * np.linalg.norm(g)**2
-
-        print(f"Iteration {i}: t = {t}, a = {a}, b = {b}, theta = {(theta - t * g).T}  Error: {a - b}")
-        i += 1
+    g = gradient(theta, x, y) 
+    a, b = 0, 0
+    while a - b >= 0 and i < max_iters+1:
         t *= beta
+        a = objective(theta - t * g, x, y)
+        b = objective(theta , x, y) - alpha * t * np.linalg.norm(g)**2
 
-    return np.squeeze((theta - t * g).T)
+        #print(f"Iteration {i}: t = {t}, a = {a}, b = {b}, theta = {(theta - t * g).T}  Error: {a - b}")
+        i += 1
+
+    return t
+
+
+def gradient_descent(x, y, theta, max_n=10000, alpha=0.4, beta=0.9, epsilon=1e-6):
+
+    thetas = [theta]
+    thetas.append(thetas[-1] - backtracking_line_search(x,y,thetas[-1],alpha,beta)*gradient(thetas[-1],x,y))
+
+    i = 0
+    while np.linalg.norm(thetas[-1] - thetas[-2]) > epsilon and i < max_n:
+        thetas.append(thetas[-1] - backtracking_line_search(x,y,thetas[-1],alpha,beta)*gradient(thetas[-1],x,y))
+        i += 1
+
+    return thetas[-1], thetas
 
 
 def accuracy(x, actual_classes, theta_star):
@@ -101,19 +110,29 @@ if __name__ == "__main__":
     admitted = data.loc[y == 1]
     not_admitted = data.loc[y == 0]
 
-    #plt.scatter(admitted.iloc[:, 0], admitted.iloc[:, 1], s=10, label='Admitted')
-    #plt.scatter(not_admitted.iloc[:, 0], not_admitted.iloc[:, 1], s=10, label='Not Admitted')
-    #plt.legend()
-    #plt.show()
-
-    theta_star = fit(X, y, np.zeros((X.shape[1], 1)))
-    print(f"theta_star: {theta_star}")
+    #theta_star = fit(X, y, np.zeros((X.shape[1], 1)))
+    #print(f"theta_star: {theta_star}") [-24.8687714    0.20337239   0.19987264]
         
     #theta_star = np.array([-20, 0.1, 0.1]) # This set of thetas does not work! just for debugging
-    theta_star_backtrack = fit_backtrack(X, y, np.array([0,0,0]), 0.5, 0.8)
+    #theta_star_backtrack, thetas = gradient_descent(X, y, np.array([-24,0.2,0.2]), 0.35, 0.9)
+    theta_star_backtrack, thetas = gradient_descent(X, y, np.array([-25,0.2,0.2]), 0.35, 0.9)
     print(f"theta_star_backtrack: {theta_star_backtrack}")
+    print(f"thetas: {thetas}")
 
 
     print(f"accuracy: {accuracy(X, y, theta_star_backtrack):.2f}%")
     
-    plot_decision_boundary(X, theta_star_backtrack)
+    #plot_decision_boundary(X, theta_star_backtrack)
+
+    t1 = np.linspace(-30, -20, 30)
+    t2 = np.linspace(-1, 1, 30)
+    t3 = np.linspace(-1, 1, 30)
+    Xm, Ym, Zm = np.meshgrid(t1, t2, t3)
+    T = objective(Zm, X, y)
+
+    fig = plt.figure()
+    ax = plt.axes(projection='3d')
+    ax.contour3D(X, Y, Z, T, cmap='binary')
+
+
+
