@@ -79,6 +79,19 @@ def gradient_descent(x, y, theta, max_n=10000, alpha=0.4, beta=0.9, epsilon=1e-6
 
     return thetas[-1], thetas
 
+def newton_gradient_descent(x, y, theta, max_n=10000, alpha=0.4, beta=0.9, epsilon=1e-6):
+
+    thetas = [theta]
+    thetas.append(thetas[-1] - backtracking_line_search(x,y,thetas[-1],alpha,beta)*gradient(thetas[-1],x,y))
+
+    i = 0
+    while np.linalg.norm(thetas[-1] - thetas[-2]) > epsilon and i < max_n:
+        thetas.append(thetas[-1] - backtracking_line_search(x,y,thetas[-1],alpha,beta)*gradient(thetas[-1],x,y))
+        i += 1
+
+    return thetas[-1], thetas
+
+
 
 def accuracy(x, actual_classes, theta_star):
     predicted_classes = (prob(theta_star, x) >= 0.5).astype(int).flatten()
